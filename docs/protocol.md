@@ -182,6 +182,10 @@ Re-send the current DNS and lease values: omitting them resets them. The
 `ShowValue()` block contains two `dnsmanual` assignments, primary and
 secondary; only the first has `var`, so parse both explicitly.
 
+`vivo-ont pool` implements this form: it parses the current router IP, mask,
+DNS, DHCP state, delnum, and lease, applies the requested range, and verifies
+the result. `--end` or `--size` changes the end; `--start` changes the start.
+
 ### Out-of-pool caveat
 
 On `GL_g2.5_100XNT0b23_4`, the CGI accepts an out-of-pool reservation but the

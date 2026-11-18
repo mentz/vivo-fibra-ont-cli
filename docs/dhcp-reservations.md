@@ -53,9 +53,9 @@ reservation was inside it made the reserved address work.
 
 To use a specific address:
 
-1. **Extend the DHCP pool** so the address is inside it (for example, set the
-   pool end to `x.x.x.250`), then add the reservation. Check that the newly
-   included addresses are not already used by fixed hosts.
+1. **Extend the DHCP pool** so the address is inside it (for example,
+   `vivo-ont pool --end 192.168.15.250`), then add the reservation. Check that
+   the newly included addresses are not already used by fixed hosts.
 2. **Or set a static address on the client** and keep the address outside the
    dynamic pool. Remove the non-working reservation.
 
@@ -81,6 +81,7 @@ The example assumes `192.168.15.250` is already inside the pool; extend the
 pool first if it is not.
 
 ```sh
+vivo-ont pool --end 192.168.15.250
 vivo-ont reservations
 vivo-ont reserve AA:BB:CC:DD:EE:FF 192.168.15.250 --hostname nas
 vivo-ont reservations

@@ -22,6 +22,8 @@ the web UI and posts the same forms.
 - **Channel control**: any valid 2.4 GHz channel and any valid 5 GHz channel,
   bypassing the UI's Auto/1/6/11 and disabled-tab limits.
 - **Radio control**: turn either band on or off.
+- **DHCP pool**: show the current range or change its start, end, or size.
+  DHCP state, DNS, and lease settings are preserved.
 - **DHCP reservations**: list, add, and remove MAC-to-IP reservations. The
   tested firmware only serves reservations inside the DHCP pool; see below.
 - **Read-back verification**: every write is checked against the router's
@@ -105,6 +107,10 @@ vivo-ont reserve AA:BB:CC:DD:EE:FF 192.168.15.250 --hostname nas
 vivo-ont unreserve 192.168.15.250
 vivo-ont unreserve AA:BB:CC:DD:EE:FF
 vivo-ont unreserve 1
+
+vivo-ont pool
+vivo-ont pool --end 192.168.15.250
+vivo-ont pool --start 192.168.15.100 --size 151
 ```
 
 `status` example:
@@ -126,6 +132,12 @@ It refuses to overwrite a different MAC/IP mapping: remove the old
 reservation first. `unreserve` accepts the 1-based list index, a MAC, or an
 IP.
 
+`pool` without arguments shows the current range and related DHCP settings.
+`--end` or `--size` changes the end; `--start` changes the start and keeps the
+current end unless `--end`/`--size` is also given. The command re-sends the
+current DNS and lease values, verifies the new range, and warns about
+reservations that fall outside it.
+
 ## What the stock UI hides
 
 - **2.4 GHz** only offers Auto / 1 / 6 / 11. The CGI accepts any valid channel.
@@ -137,10 +149,11 @@ IP.
   values unchanged; it does not rename the network.
 - **DHCP reservations** are limited by client-side JavaScript to the dynamic
   pool. The CGI accepts an address elsewhere, but the DHCP server then refuses
-  to lease **any** address to that client (no IPv4 at all). Extend the pool to
-  include the address, or set a static IP on the client. Confirmed on
-  `GL_g2.5_100XNT0b23_4`: an out-of-pool reservation blocked DHCP; extending
-  the pool so the reservation was inside it made the address work.
+  to lease **any** address to that client (no IPv4 at all). Extend the pool
+  with `vivo-ont pool --end <address>`, or set a static IP on the client.
+  Confirmed on `GL_g2.5_100XNT0b23_4`: an out-of-pool reservation blocked
+  DHCP; extending the pool so the reservation was inside it made the address
+  work.
 - **One wireless apply per login session.** The tool starts a fresh session
   for each wireless change.
 

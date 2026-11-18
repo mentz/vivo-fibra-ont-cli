@@ -45,7 +45,7 @@ from urllib.parse import quote
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 CONFIG_PATH = (Path(os.environ["VIVO_CONFIG"]).expanduser()
                if os.environ.get("VIVO_CONFIG")
@@ -440,6 +440,121 @@ def parse_pool(page: str) -> tuple[ipaddress.IPv4Address, ipaddress.IPv4Address]
     return first, last
 
 
+def _input_checked(page: str, name: str, value: str) -> bool:
+    for m in re.finditer(rf'<input[^>]*name="{name}"[^>]*>', page, re.I):
+        tag = m.group(0)
+        if (re.search(rf'value="{value}"', tag, re.I)
+                and re.search(r"\bchecked\b", tag, re.I)):
+            return True
+    return False
+
+
+def parse_dhcp_settings(page: str) -> dict:
+    def var(name: str) -> str:
+        m = re.search(rf'var\s+{name}\s*=\s*"([^"]*)"', page)
+        if not m:
+            raise RuntimeError(f"missing {name} in local network page")
+        return m.group(1)
+
+    start = var("Pool_Start")
+    size = int(var("PoolSize"))
+    if size < 1:
+        raise RuntimeError("invalid DHCP pool size")
+    end = str(ipaddress.IPv4Address(start) + size - 1)
+    dns = re.findall(r'dnsmanual\s*=\s*"([^"]*)"', page)
+    delnum = re.search(r'name="delnum"[^>]*value="([^"]*)"', page, re.I)
+    return {
+        "router": var("IP"),
+        "mask": var("Mask"),
+        "start": start,
+        "size": size,
+        "end": end,
+        "lease": int(var("LeaseTime")),
+        "dns": dns,
+        "dns_user": _input_checked(page, "input_dns", "1"),
+        "dhcp_enabled": _input_checked(page, "dhcpTypeRadio", "1"),
+        "delnum": delnum.group(1) if delnum else "NULL",
+    }
+
+
+def format_pool(cfg: dict) -> str:
+    dns = ", ".join(cfg["dns"]) if cfg["dns_user"] else "router proxy"
+    return "\n".join([
+        f"DHCP pool : {cfg['start']}-{cfg['end']}  ({cfg['size']} addresses)",
+        f"Router    : {cfg['router']}/{cfg['mask']}",
+        f"Lease     : {cfg['lease']} s",
+        f"DNS       : {dns}",
+        f"DHCP      : {'on' if cfg['dhcp_enabled'] else 'off'}",
+    ])
+
+
+def validate_pool(router: str, mask: str, start: str, end: str) -> None:
+    network = ipaddress.ip_network(f"{router}/{mask}", strict=False)
+    first = ipaddress.IPv4Address(start)
+    last = ipaddress.IPv4Address(end)
+    if first > last:
+        raise ValueError("pool start is after pool end")
+    for ip in (first, last):
+        if ip not in network:
+            raise ValueError(f"{ip} is outside {network}")
+        if ip in (network.network_address, network.broadcast_address):
+            raise ValueError(f"{ip} is a network or broadcast address")
+    router_ip = ipaddress.IPv4Address(router)
+    if first <= router_ip <= last:
+        raise ValueError("DHCP pool must not contain the router address")
+
+
+def set_pool(router: Router, start: str | None = None, end: str | None = None,
+             size: int | None = None) -> tuple[dict, tuple[str, str]]:
+    router.fresh_session()
+    cfg = parse_dhcp_settings(router.local_network_page())
+    old = (cfg["start"], cfg["end"])
+    new_start = normalize_ip(start) if start else cfg["start"]
+    if size is not None:
+        if size < 1:
+            raise ValueError("pool size must be at least 1")
+        new_end = str(ipaddress.IPv4Address(new_start) + size - 1)
+    elif end is not None:
+        new_end = normalize_ip(end)
+    else:
+        new_end = cfg["end"]
+    validate_pool(cfg["router"], cfg["mask"], new_start, new_end)
+    if cfg["dns_user"] and not cfg["dns"]:
+        raise RuntimeError("user-defined DNS is enabled but no DNS addresses were parsed")
+    primary = cfg["dns"][0] if cfg["dns"] else cfg["router"]
+    secondary = cfg["dns"][1] if len(cfg["dns"]) > 1 else primary
+    data = {
+        "localNetWorkTabIndex": "1",
+        "delnum": cfg["delnum"],
+        "addFlag": "0",
+        "DHCP_ApplyFlag": "1",
+        "uiViewIPAddr": cfg["router"],
+        "uiViewNetMask": cfg["mask"],
+        "StartIp": new_start,
+        "EndIp": new_end,
+        "PoolSize": "0",
+        "dhcpTypeRadio": "1" if cfg["dhcp_enabled"] else "0",
+        "MLG_DNSServer1_LANSetup": "1" if cfg["dns_user"] else "2",
+        "PrimaryDns": primary if cfg["dns_user"] else cfg["router"],
+        "SecondDns": secondary if cfg["dns_user"] else cfg["router"],
+        "dhcp_LeaseTime": str(cfg["lease"]),
+    }
+    router.post(LOCAL_NETWORK_PATH, data, referer=LOCAL_NETWORK_PATH)
+    time.sleep(6)
+    after = parse_dhcp_settings(router.local_network_page())
+    if (after["start"], after["end"]) != (new_start, new_end):
+        raise RuntimeError(
+            f"pool change was not applied; router reports "
+            f"{after['start']}-{after['end']}")
+    first = ipaddress.IPv4Address(new_start)
+    last = ipaddress.IPv4Address(new_end)
+    for row in parse_reservations(router.get(DHCP_RESERVATIONS_PATH)):
+        if not first <= ipaddress.IPv4Address(row["ip"]) <= last:
+            print(f"warning: reservation {row['mac']} -> {row['ip']} is outside "
+                  f"the new pool {new_start}-{new_end}", file=sys.stderr)
+    return after, old
+
+
 def add_reservation(router: Router, mac: str, ip: str,
                     hostname: str = "") -> tuple[list[dict], bool, str, str]:
     mac = normalize_mac(mac)
@@ -539,6 +654,12 @@ def main(argv=None) -> int:
 
     sub.add_parser("reservations", help="list DHCP reservations")
 
+    p_pool = sub.add_parser("pool", help="show or change the DHCP pool")
+    p_pool.add_argument("--start", help="new pool start address")
+    g_pool = p_pool.add_mutually_exclusive_group()
+    g_pool.add_argument("--end", help="new pool end address")
+    g_pool.add_argument("--size", type=int, help="new pool size in addresses")
+
     p_reserve = sub.add_parser("reserve", help="add a DHCP reservation")
     p_reserve.add_argument("mac")
     p_reserve.add_argument("ip")
@@ -578,6 +699,21 @@ def main(argv=None) -> int:
         if args.cmd == "reservations":
             router.login()
             print(format_reservations(read_reservations(router)))
+            return 0
+
+        if args.cmd == "pool":
+            if args.start is None and args.end is None and args.size is None:
+                router.login()
+                print(format_pool(parse_dhcp_settings(router.local_network_page())))
+                return 0
+            try:
+                cfg, old = set_pool(router, args.start, args.end, args.size)
+            except ValueError as e:
+                print(f"error: {e}", file=sys.stderr)
+                return 2
+            print(format_pool(cfg))
+            print(f"pool updated: {old[0]}-{old[1]} -> "
+                  f"{cfg['start']}-{cfg['end']}")
             return 0
 
         if args.cmd == "reserve":

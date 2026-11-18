@@ -2,11 +2,14 @@ import pytest
 
 from vivo_ont import (
     State,
+    format_pool,
     format_reservations,
     normalize_ip,
     normalize_mac,
+    parse_dhcp_settings,
     parse_pool,
     parse_reservations,
+    validate_pool,
 )
 
 RESERVATIONS_HTML = """
@@ -26,6 +29,27 @@ RESERVATIONS_HTML = """
 </tr>
 </tbody>
 </table>
+"""
+
+DHCP_HTML = """
+<html><body>
+<script>
+var IP="192.168.15.1";
+var Mask="255.255.255.0";
+var Pool_Start = "192.168.15.100";
+var PoolSize = "151";
+var LeaseTime = "14400";
+var dnsmanual  = "8.8.4.4";
+dnsmanual  = "1.1.1.1";
+</script>
+<form name="form_DHCP">
+<input type="radio" name="dhcpTypeRadio" value="1" checked>
+<input type="radio" name="dhcpTypeRadio" value="0">
+<input type="radio" name="input_dns" id="input_dns" value="1" checked>
+<input type="radio" name="input_dns" value="0">
+<input type="hidden" name="delnum" id="delnum" value="NULL">
+</form>
+</body></html>
 """
 
 WIRELESS_HTML = """
@@ -118,6 +142,44 @@ def test_parse_pool():
 ])
 def test_parse_pool_missing_or_invalid(page):
     assert parse_pool(page) is None
+
+
+def test_parse_dhcp_settings():
+    cfg = parse_dhcp_settings(DHCP_HTML)
+    assert cfg["router"] == "192.168.15.1"
+    assert cfg["mask"] == "255.255.255.0"
+    assert cfg["start"] == "192.168.15.100"
+    assert cfg["end"] == "192.168.15.250"
+    assert cfg["size"] == 151
+    assert cfg["lease"] == 14400
+    assert cfg["dns"] == ["8.8.4.4", "1.1.1.1"]
+    assert cfg["dns_user"] is True
+    assert cfg["dhcp_enabled"] is True
+    assert cfg["delnum"] == "NULL"
+
+
+def test_format_pool():
+    text = format_pool(parse_dhcp_settings(DHCP_HTML))
+    assert "192.168.15.100-192.168.15.250" in text
+    assert "151 addresses" in text
+    assert "8.8.4.4, 1.1.1.1" in text
+
+
+def test_validate_pool():
+    validate_pool("192.168.15.1", "255.255.255.0",
+                  "192.168.15.100", "192.168.15.250")
+
+
+@pytest.mark.parametrize("start,end", [
+    ("192.168.15.250", "192.168.15.100"),
+    ("192.168.14.100", "192.168.15.250"),
+    ("192.168.15.1", "192.168.15.250"),
+    ("192.168.15.0", "192.168.15.250"),
+    ("192.168.15.100", "192.168.15.255"),
+])
+def test_validate_pool_rejects_invalid(start, end):
+    with pytest.raises(ValueError):
+        validate_pool("192.168.15.1", "255.255.255.0", start, end)
 
 
 def test_parse_reservations():
