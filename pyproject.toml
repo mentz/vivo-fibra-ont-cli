@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vivo-fibra-ont"
+version = "0.1.0"
+description = "Unofficial CLI for Vivo Fibra / MitraStar GPT-2742GX4X5v6 Wi-Fi and DHCP reservations"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "mentz" }]
+keywords = ["vivo-fibra", "mitrastar", "ont", "router", "dhcp", "wifi"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: System Administrators",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: System :: Networking",
+]
+dependencies = ["cryptography>=41"]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+vivo-ont = "vivo_ont:main"
+
+[tool.setuptools]
+py-modules = ["vivo_ont"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
