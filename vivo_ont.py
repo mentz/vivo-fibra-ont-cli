@@ -45,7 +45,7 @@ from urllib.parse import quote
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 CONFIG_PATH = (Path(os.environ["VIVO_CONFIG"]).expanduser()
                if os.environ.get("VIVO_CONFIG")
@@ -424,12 +424,35 @@ def read_reservations(router: Router) -> list[dict]:
     return parse_reservations(router.get(DHCP_RESERVATIONS_PATH))
 
 
+def parse_pool(page: str) -> tuple[ipaddress.IPv4Address, ipaddress.IPv4Address] | None:
+    start = re.search(r'var\s+Pool_Start\s*=\s*"([^"]+)"', page)
+    size = re.search(r'var\s+PoolSize\s*=\s*"(\d+)"', page)
+    if not start or not size:
+        return None
+    count = int(size.group(1))
+    if count < 1:
+        return None
+    try:
+        first = ipaddress.IPv4Address(start.group(1))
+        last = first + count - 1
+    except ValueError:
+        return None
+    return first, last
+
+
 def add_reservation(router: Router, mac: str, ip: str,
                     hostname: str = "") -> tuple[list[dict], bool, str, str]:
     mac = normalize_mac(mac)
     ip = normalize_ip(ip)
     router.fresh_session()
-    before = read_reservations(router)
+    page = router.local_network_page()
+    before = parse_reservations(router.get(DHCP_RESERVATIONS_PATH))
+    pool = parse_pool(page)
+    if pool and not pool[0] <= ipaddress.IPv4Address(ip) <= pool[1]:
+        print(f"warning: {ip} is outside the DHCP pool {pool[0]}-{pool[1]}; "
+              "the tested firmware does not serve out-of-pool reservations and "
+              "the client may get no IPv4 lease. Extend the pool or use a "
+              "static address.", file=sys.stderr)
     for index, row in enumerate(before, 1):
         if row["mac"].upper() == mac:
             if row["ip"] == ip:

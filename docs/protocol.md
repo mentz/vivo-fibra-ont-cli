@@ -154,13 +154,42 @@ The tool reads the list back after every write. A reservation is considered
 applied only when the exact MAC/IP pair appears; a delete is considered
 applied only when the row is gone and the table shrank by one.
 
+### Changing the pool
+
+`POST /cgi-bin/settings-local-network.cgi` with `DHCP_ApplyFlag=1` and the
+full DHCP form:
+
+```text
+localNetWorkTabIndex=1
+delnum=NULL
+addFlag=0
+DHCP_ApplyFlag=1
+uiViewIPAddr=192.168.15.1
+uiViewNetMask=255.255.255.0
+StartIp=192.168.15.100
+EndIp=192.168.15.250
+PoolSize=0
+dhcpTypeRadio=1
+MLG_DNSServer1_LANSetup=1
+PrimaryDns=8.8.4.4
+SecondDns=1.1.1.1
+dhcp_LeaseTime=14400
+```
+
+The CGI computes `PoolSize` from `StartIp`/`EndIp`; the form sends `0`.
+`MLG_DNSServer1_LANSetup=1` is user-defined DNS, `2` is the router proxy.
+Re-send the current DNS and lease values: omitting them resets them. The
+`ShowValue()` block contains two `dnsmanual` assignments, primary and
+secondary; only the first has `var`, so parse both explicitly.
+
 ### Out-of-pool caveat
 
-The CGI accepts an address outside the dynamic pool, but whether the DHCP
-daemon serves it as a static lease depends on the firmware. It is known to be
-accepted and stored on `GL_g2.5_100XNT0b23_4`; the lease itself was not
-exercised because the client was offline. If a client does not receive the
-reserved address, use a static address on the client instead.
+On `GL_g2.5_100XNT0b23_4`, the CGI accepts an out-of-pool reservation but the
+DHCP server does not serve it. The client gets **no IPv4 lease at all** (IPv6
+continues to work). Tested 2026-11-18: removing the reservation produced a
+dynamic lease; extending the pool so the address was inside it made the
+reservation work. Extend the pool to include the address, or set a static
+address on the client.
 
 ## Security notes
 

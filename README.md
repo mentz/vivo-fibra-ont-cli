@@ -22,8 +22,8 @@ the web UI and posts the same forms.
 - **Channel control**: any valid 2.4 GHz channel and any valid 5 GHz channel,
   bypassing the UI's Auto/1/6/11 and disabled-tab limits.
 - **Radio control**: turn either band on or off.
-- **DHCP reservations**: list, add, and remove MAC-to-IP reservations,
-  including addresses **outside the DHCP pool**, which the UI refuses.
+- **DHCP reservations**: list, add, and remove MAC-to-IP reservations. The
+  tested firmware only serves reservations inside the DHCP pool; see below.
 - **Read-back verification**: every write is checked against the router's
   state; the command exits non-zero if the change did not stick.
 - **No stored credentials in the repo**: the config file lives in
@@ -136,7 +136,11 @@ IP.
 - **5 GHz SSID/password** are server-locked. The tool re-sends the stored
   values unchanged; it does not rename the network.
 - **DHCP reservations** are limited by client-side JavaScript to the dynamic
-  pool. The CGI accepts addresses elsewhere in the LAN subnet.
+  pool. The CGI accepts an address elsewhere, but the DHCP server then refuses
+  to lease **any** address to that client (no IPv4 at all). Extend the pool to
+  include the address, or set a static IP on the client. Confirmed on
+  `GL_g2.5_100XNT0b23_4`: an out-of-pool reservation blocked DHCP; extending
+  the pool so the reservation was inside it made the address work.
 - **One wireless apply per login session.** The tool starts a fresh session
   for each wireless change.
 

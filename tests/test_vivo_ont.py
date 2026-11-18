@@ -5,6 +5,7 @@ from vivo_ont import (
     format_reservations,
     normalize_ip,
     normalize_mac,
+    parse_pool,
     parse_reservations,
 )
 
@@ -101,6 +102,22 @@ def test_normalize_ip():
 def test_normalize_ip_rejects_invalid(value):
     with pytest.raises(ValueError):
         normalize_ip(value)
+
+
+def test_parse_pool():
+    page = '<script>var Pool_Start = "192.168.15.100"; var PoolSize = "101";</script>'
+    first, last = parse_pool(page)
+    assert str(first) == "192.168.15.100"
+    assert str(last) == "192.168.15.200"
+
+
+@pytest.mark.parametrize("page", [
+    "",
+    '<script>var Pool_Start = "192.168.15.100";</script>',
+    '<script>var Pool_Start = "192.168.15.100"; var PoolSize = "0";</script>',
+])
+def test_parse_pool_missing_or_invalid(page):
+    assert parse_pool(page) is None
 
 
 def test_parse_reservations():
