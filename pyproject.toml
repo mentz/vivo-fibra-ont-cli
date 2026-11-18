@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "vivo-fibra-ont"
+name = "vivo-fibra-ont-cli"
 version = "0.1.0"
 description = "Unofficial CLI for Vivo Fibra / MitraStar GPT-2742GX4X5v6 Wi-Fi and DHCP reservations"
 readme = "README.md"

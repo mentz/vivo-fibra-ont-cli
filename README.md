@@ -1,6 +1,6 @@
-# vivo-fibra-ont
+# vivo-fibra-ont-cli
 
-[![CI](https://github.com/mentz/vivo-fibra-ont/actions/workflows/ci.yml/badge.svg)](https://github.com/mentz/vivo-fibra-ont/actions/workflows/ci.yml)
+[![CI](https://github.com/mentz/vivo-fibra-ont-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/mentz/vivo-fibra-ont-cli/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Unofficial Python CLI for the Vivo Fibra / MitraStar **GPT-2742GX4X5v6** ONT
@@ -46,12 +46,14 @@ Requirements: Python 3.10+, `curl`, and network access to the router's LAN
 interface.
 
 ```sh
-git clone https://github.com/mentz/vivo-fibra-ont.git
-cd vivo-fibra-ont
+git clone https://github.com/mentz/vivo-fibra-ont-cli.git
+cd vivo-fibra-ont-cli
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e .
 ```
+
+The installed command is `vivo-ont`.
 
 Or with pipx:
 
