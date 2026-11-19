@@ -1,9 +1,7 @@
-"""Cookie-aware HTTP transport used by every model.
+"""Cookie-aware HTTP transport using the system ``curl`` binary.
 
-The ONT web UI runs on plain HTTP and uses a session cookie. Requests are made
-with the system ``curl`` binary; this keeps the dependency list small and
-preserves the behaviour of the original single-file tool (including curl exit
-code 8 when a radio restart closes the connection).
+curl exit code 8 means a radio restart closed the connection after the CGI
+accepted the request.
 """
 
 from __future__ import annotations

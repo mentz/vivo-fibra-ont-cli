@@ -4,12 +4,11 @@ Target: MitraStar **GPT-2742GX4X5v6**, "sophia" web UI, firmware
 `GL_g2.5_100XNT0b23_4` (Vivo, Brazil). Observed 2026-11. Other firmware
 builds may change endpoints, field names, or validation.
 
-These notes describe the default model (`gpt-2742gx4x5v6`). Model-specific
-paths and field names live in `vivo_ont_cli/models/`; see
+These notes describe the default model (`gpt-2742gx4x5v6`). Model paths and
+field names are in `vivo_ont_cli/models/`; see
 [`adding-a-model.md`](adding-a-model.md).
 
-Everything here is LAN-side, authenticated HTTP. No credentials or
-installation-specific addresses are recorded.
+All endpoints are LAN-side authenticated HTTP.
 
 ## Session
 
@@ -201,12 +200,8 @@ address on the client.
 
 ## Security notes
 
-- The admin interface is LAN-only by design. Do not expose it to the internet.
-- The tool uses only the authenticated CGI endpoints above; it does not call
-  diagnostic/execution endpoints.
-- CVE-2026-52484 describes command injection in
-  `device-management-utilities-internet.cgi` (the ping utility) on the same
-  firmware family. Keep the admin interface on the LAN and patch when the ISP
-  provides an update.
-- Credentials are read from a local file or environment variables; none are
-  stored in this repository.
+- Keep the admin interface on the LAN.
+- CVE-2026-52484: command injection in
+  `device-management-utilities-internet.cgi` on the same firmware family. Patch
+  when the ISP provides an update.
+- Credentials are read from a local file or environment variables.

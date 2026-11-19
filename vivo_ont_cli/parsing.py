@@ -1,10 +1,4 @@
-"""Small, model-independent helpers for the HTML served by ONT web UIs.
-
-The helpers deliberately avoid a full HTML parser: the CGIs emit stable,
-hand-written markup and the original tool already matched it with regular
-expressions. Keeping the helpers here lets model modules share them without
-depending on each other.
-"""
+"""Regular-expression helpers for the ONT HTML pages."""
 
 from __future__ import annotations
 

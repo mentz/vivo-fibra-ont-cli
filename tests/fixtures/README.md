@@ -1,15 +1,10 @@
 # Test fixtures
 
-Each model gets a directory named after its id.
+One directory per model id:
 
-- `wireless.html`: the page returned by
-  `/cgi-bin/settings-wireless-network.cgi`.
-- `local-network.html`: the page returned by
-  `/cgi-bin/settings-local-network.cgi`.
-- `reservations.html`: the page returned by
-  `/cgi-bin/settings-local-network-dhcp.cgi`.
+- `wireless.html`: `GET /cgi-bin/settings-wireless-network.cgi`
+- `local-network.html`: `GET /cgi-bin/settings-local-network.cgi`
+- `reservations.html`: `GET /cgi-bin/settings-local-network-dhcp.cgi`
 
-**Redact before committing.** Replace every `PreSharedKey`, `wlPasswd`, WEP
-key, admin password and session cookie with a fixture value. Do not commit a
-page captured from a live router without checking the HTML and inline
-JavaScript for credentials.
+Redact PSKs, WEP keys, admin passwords, session cookies and public keys before
+committing.

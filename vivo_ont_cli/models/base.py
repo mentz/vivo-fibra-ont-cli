@@ -1,8 +1,8 @@
 """Model contract and shared value objects.
 
-To add a modem model, subclass :class:`OntModel` (or a family base such as
+Subclass :class:`OntModel` (or a family base such as
 :class:`vivo_ont_cli.models.mitrastar.MitraStarSophiaModel`) and implement the
-methods the CLI calls. The CLI only uses this interface:
+methods the CLI calls:
 
 * :meth:`login` / :meth:`logout`
 * :meth:`read_state` and :meth:`apply`
@@ -10,7 +10,7 @@ methods the CLI calls. The CLI only uses this interface:
   :meth:`remove_reservation`, :meth:`read_pool`, :meth:`set_pool`
 * :attr:`capabilities` and :meth:`validate_change`
 
-See ``docs/adding-a-model.md`` for the contributor checklist.
+Checklist: ``docs/adding-a-model.md``.
 """
 
 from __future__ import annotations
