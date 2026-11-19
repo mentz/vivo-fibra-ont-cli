@@ -4,6 +4,10 @@ Target: MitraStar **GPT-2742GX4X5v6**, "sophia" web UI, firmware
 `GL_g2.5_100XNT0b23_4` (Vivo, Brazil). Observed 2026-11. Other firmware
 builds may change endpoints, field names, or validation.
 
+These notes describe the default model (`gpt-2742gx4x5v6`). Model-specific
+paths and field names live in `vivo_ont_cli/models/`; see
+[`adding-a-model.md`](adding-a-model.md).
+
 Everything here is LAN-side, authenticated HTTP. No credentials or
 installation-specific addresses are recorded.
 

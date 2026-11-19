@@ -4,9 +4,10 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Unofficial Python CLI for the Vivo Fibra / MitraStar **GPT-2742GX4X5v6** ONT
-("sophia" web UI). It controls the Wi-Fi radios and DHCP reservations through
-the router's own CGI endpoints, including settings the stock UI hides or
-rejects.
+("sophia" web UI), with a model registry so the same command set can be
+adapted to other ONTs. It controls the Wi-Fi radios and DHCP reservations
+through the router's own CGI endpoints, including settings the stock UI hides
+or rejects.
 
 Tested on firmware `GL_g2.5_100XNT0b23_4` (Vivo, Brazil). No Selenium, no
 browser automation: the tool logs in with the same challenge/response form as
@@ -30,17 +31,25 @@ the web UI and posts the same forms.
   state; the command exits non-zero if the change did not stick.
 - **No stored credentials in the repo**: the config file lives in
   `~/.config` and is never read from the working directory.
+- **Model registry**: the GPT-2742GX4X5v6 is the default profile; other ONTs
+  can be added as model classes without touching the CLI. See
+  [`docs/adding-a-model.md`](docs/adding-a-model.md).
 
 ## Compatibility
 
-| Device / firmware | Status |
-| --- | --- |
-| MitraStar **GPT-2742GX4X5v6**, Vivo BR, `GL_g2.5_100XNT0b23_4` | **Tested** |
-| MitraStar GPT-2742GX4X5v6, Movistar ES, `GL_g1.14_*` / `GL_g2.5_*` | Similar "sophia" UI; untested. Default LAN is usually `192.168.1.1` |
-| MitraStar GPT-2741GNAC-N1 and other "sophia" ONTs | Same CGI family for many pages; untested and fields may differ |
+| Device / firmware | Model id | Status |
+| --- | --- | --- |
+| MitraStar **GPT-2742GX4X5v6**, Vivo BR, `GL_g2.5_100XNT0b23_4` | `gpt-2742gx4x5v6` | **Tested** |
+| MitraStar GPT-2742GX4X5v6, Movistar ES, `GL_g1.14_*` / `GL_g2.5_*` | `gpt-2742gx4x5v6` | Similar "sophia" UI; untested. Default LAN is usually `192.168.1.1` |
+| MitraStar GPT-2741GNAC-N1 and other "sophia" ONTs | — | Same CGI family for many pages; adapt a model, untested |
 
 Vivo Fibra installations commonly use `192.168.15.1`; this is the default
-host. Set `host` in the config file for any other address.
+host. Set `host` in the config file for any other address. Select a model with
+`--model`, `VIVO_MODEL`, or the `model` key in the config file. Run
+`vivo-ont models` to list the registered ids and aliases.
+
+See [`docs/adding-a-model.md`](docs/adding-a-model.md) to adapt the CLI to a
+new ONT.
 
 ## Install
 
@@ -71,9 +80,12 @@ Create `~/.config/vivo-fibra-ont.json` with mode `600`:
 {
   "host": "http://192.168.15.1",
   "user": "admin",
-  "password": "the-password-on-the-router-label"
+  "password": "the-password-on-the-router-label",
+  "model": "gpt-2742gx4x5v6"
 }
 ```
+
+`model` is optional and defaults to `gpt-2742gx4x5v6`.
 
 ```sh
 chmod 600 ~/.config/vivo-fibra-ont.json
@@ -84,6 +96,7 @@ Environment variables override the file:
 | Variable | Purpose |
 | --- | --- |
 | `VIVO_CONFIG` | Path to a different JSON config file |
+| `VIVO_MODEL` | Model id or alias |
 | `VIVO_HOST` | Router base URL |
 | `VIVO_USER` | Admin user |
 | `VIVO_PASS` | Admin password |
@@ -94,7 +107,9 @@ config file; the repo `.gitignore` excludes common local names.
 ## Usage
 
 ```sh
+vivo-ont models
 vivo-ont status
+vivo-ont --model gpt-2742gx4x5v6 status
 vivo-ont set 2.4 11
 vivo-ont set 5 149 --bandwidth 80
 vivo-ont set 5 149 --mode 11ac
@@ -138,7 +153,32 @@ current end unless `--end`/`--size` is also given. The command re-sends the
 current DNS and lease values, verifies the new range, and warns about
 reservations that fall outside it.
 
-## What the stock UI hides
+## Project layout
+
+```text
+vivo_ont_cli/
+├── cli.py              argparse and command dispatch
+├── config.py           config file and environment handling
+├── session.py          curl-based cookie session
+├── parsing.py          generic HTML helpers
+├── formatting.py       status, reservation and pool output
+├── validation.py       MAC/IP/channel/pool validation
+└── models/
+    ├── base.py         OntModel contract and value objects
+    ├── registry.py     model id/alias registry
+    ├── mitrastar.py    "sophia" family: login, forms, DHCP
+    └── gpt2742.py      GPT-2742GX4X5v6 profile
+tests/fixtures/<model>/  captured pages used by the parser tests
+vivo_ont.py             compatibility launcher
+```
+
+To add a model, subclass `OntModel` or `MitraStarSophiaModel`, set the model
+metadata and `capabilities`, and override only the paths or field ids that
+differ. Add fixtures and tests, register the class, then run
+`vivo-ont models`. Full checklist:
+[`docs/adding-a-model.md`](docs/adding-a-model.md).
+
+## What the stock UI hides (default model)
 
 - **2.4 GHz** only offers Auto / 1 / 6 / 11. The CGI accepts any valid channel.
 - **5 GHz** advanced settings are rendered disabled, and the radio may ship
@@ -205,8 +245,9 @@ pip install -e ".[test]"
 pytest
 ```
 
-Tests cover MAC/IP normalization and the reservation/wireless HTML parsers;
-they do not contact a router.
+Tests cover MAC/IP normalization, pool validation, the reservation/wireless
+HTML parsers, the model registry and the MitraStar form builders; they do not
+contact a router.
 
 ## License
 

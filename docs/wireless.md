@@ -2,7 +2,8 @@
 
 Findings from the GPT-2742GX4X5v6 "sophia" UI, firmware
 `GL_g2.5_100XNT0b23_4`. Channel behavior can differ by regulatory domain and
-firmware.
+firmware. Model-specific limits live in the model's `Capabilities`; see
+[`adding-a-model.md`](adding-a-model.md).
 
 ## 2.4 GHz
 
